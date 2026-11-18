@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY pyproject.toml .
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir fastapi uvicorn httpx pydantic rich duckdb
+    pip install --no-cache-dir fastapi uvicorn httpx pydantic rich duckdb python-multipart
 
 COPY generator_app/ ./generator_app/
 COPY consumer/ ./consumer/

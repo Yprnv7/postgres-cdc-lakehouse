@@ -1,0 +1,27 @@
+{
+  "name": "postgres-cdc-connector",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "tasks.max": "1",
+    "plugin.name": "pgoutput",
+    "database.hostname": "postgres",
+    "database.port": "5432",
+    "database.user": "postgres",
+    "database.password": "postgres",
+    "database.dbname": "oltp_db",
+    "topic.prefix": "cdc",
+    "table.include.list": "public.customers,public.orders",
+    "slot.name": "debezium_cdc_slot",
+    "publication.autocreate.mode": "filtered",
+    "decimal.handling.mode": "double",
+    "tombstones.on.delete": "false",
+    "transforms": "unwrap,reroute",
+    "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
+    "transforms.unwrap.drop.tombstones": "true",
+    "transforms.unwrap.delete.handling.mode": "rewrite",
+    "transforms.unwrap.add.fields": "op,table,lsn,ts_ms",
+    "transforms.reroute.type": "io.debezium.transforms.ByLogicalTableRouter",
+    "transforms.reroute.topic.regex": ".*\\.public\\.(.*)",
+    "transforms.reroute.topic.replacement": "$1.events"
+  }
+}

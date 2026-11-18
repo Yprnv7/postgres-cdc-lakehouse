@@ -160,6 +160,79 @@ class CDCSinkWorker:
             f"Corrupted CDC event routed to DLQ [{dlq_id}] on topic '{topic}': {reason}"
         )
 
+    def emit_openlineage_event(
+        self,
+        event_type: Literal["START", "COMPLETE", "FAIL"] = "COMPLETE",
+        marquez_url: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Emit an OpenLineage RunEvent representing the CDC ingestion batch.
+
+        Follows OpenLineage 1-0-5 specification with dataset inputs and outputs.
+        """
+        marquez_endpoint = marquez_url or os.getenv("MARQUEZ_URL")
+        run_id = str(uuid.uuid4())
+        now_iso = datetime.now(timezone.utc).isoformat()
+
+        event: Dict[str, Any] = {
+            "eventType": event_type,
+            "eventTime": now_iso,
+            "run": {
+                "runId": run_id,
+                "facets": {
+                    "nominalTime": {
+                        "_producer": "https://github.com/Yprnv7/postgres-cdc-lakehouse",
+                        "_schemaURL": "https://openlineage.io/spec/facets/1-0-0/NominalTimeRunFacet.json",
+                        "nominalStartTime": now_iso,
+                    }
+                },
+            },
+            "job": {
+                "namespace": "postgres_cdc_pipeline",
+                "name": "cdc_ingestion_sink",
+                "facets": {},
+            },
+            "inputs": [
+                {
+                    "namespace": "postgres_oltp",
+                    "name": "oltp_db.public.customers",
+                },
+                {
+                    "namespace": "postgres_oltp",
+                    "name": "oltp_db.public.orders",
+                },
+            ],
+            "outputs": [
+                {
+                    "namespace": "duckdb_lakehouse",
+                    "name": "lakehouse.dim_customers_scd2",
+                },
+                {
+                    "namespace": "duckdb_lakehouse",
+                    "name": "lakehouse.fct_orders",
+                },
+            ],
+            "producer": "https://github.com/Yprnv7/postgres-cdc-lakehouse",
+            "schemaURL": "https://openlineage.io/spec/1-0-5/OpenLineage.json",
+        }
+
+        if marquez_endpoint:
+            try:
+                import httpx
+
+                resp = httpx.post(
+                    f"{marquez_endpoint.rstrip('/')}/api/v1/lineage",
+                    json=event,
+                    timeout=2.0,
+                )
+                if resp.status_code in (200, 201):
+                    logger.info(
+                        f"Emitted OpenLineage event {run_id} to Marquez at {marquez_endpoint}"
+                    )
+            except Exception as e:
+                logger.debug(f"Marquez endpoint unreachable or skipped: {e}")
+
+        return event
+
     def process_batch(self, items: List[Tuple[str, Any, int]]) -> Dict[str, int]:
         """Process batch of (topic, payload, lsn) tuples with high throughput."""
         successes = 0

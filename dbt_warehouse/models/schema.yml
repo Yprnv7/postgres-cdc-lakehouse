@@ -1,0 +1,36 @@
+version: 2
+
+models:
+  - name: dim_customers_scd2
+    description: "Slowly Changing Dimension Type 2 table tracking customer attribute mutations over time."
+    columns:
+      - name: customer_sk
+        description: "Surrogate key uniquely identifying each version of a customer."
+        tests:
+          - unique
+          - not_null
+      - name: customer_id
+        description: "Natural business key of the customer."
+        tests:
+          - not_null
+      - name: is_current
+        description: "Boolean flag indicating whether this is the active current version."
+        tests:
+          - not_null
+
+  - name: fct_orders
+    description: "Fact table containing order transactions joined with current customer dimensions."
+    columns:
+      - name: order_id
+        description: "Unique order transaction identifier."
+        tests:
+          - unique
+          - not_null
+      - name: amount_cents
+        description: "Monetary amount in cents."
+        tests:
+          - not_null
+      - name: status
+        description: "Lifecycle status of order."
+        tests:
+          - not_null

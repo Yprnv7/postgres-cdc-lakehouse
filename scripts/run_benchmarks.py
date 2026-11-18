@@ -12,6 +12,7 @@ Outputs a verified benchmark report to docs/BENCHMARKS.md.
 from __future__ import annotations
 
 import argparse
+import json
 import random
 import sys
 import time
@@ -327,6 +328,26 @@ def main() -> None:
     generate_benchmark_markdown(
         ingest_res, scd2_res, dlq_res, pit_res, Path(args.output)
     )
+
+    import platform
+    raw_data = {
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        "environment": {
+            "os": platform.system(),
+            "os_release": platform.release(),
+            "machine": platform.machine(),
+            "python_version": platform.python_version(),
+        },
+        "ingestion": ingest_res,
+        "scd2_mutations": scd2_res,
+        "dead_letter_queue": dlq_res,
+        "point_in_time": pit_res,
+    }
+
+    json_path = Path("docs/benchmarks/cdc_benchmark.json")
+    json_path.parent.mkdir(parents=True, exist_ok=True)
+    json_path.write_text(json.dumps(raw_data, indent=2), encoding="utf-8")
+    print(f"[+] Raw benchmark JSON written to: {json_path}")
 
     storage.close()
 

@@ -1,0 +1,37 @@
+# Soda Core / Great Expectations Data Contract Definition for CDC Lakehouse
+# Validates schema contracts, NOT NULL guarantees, value ranges, and freshness SLAs
+
+checks for raw_orders_cdc:
+  - missing_count(order_id) = 0:
+      name: "Order ID primary key must never be null"
+  - missing_count(customer_id) = 0:
+      name: "Customer ID foreign key must never be null"
+  - min(amount_cents) > 0:
+      name: "Order amount must be positive"
+  - invalid_count(status) = 0:
+      valid values: ['CREATED', 'PAID', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'REFUNDED']
+      name: "Order status must adhere to canonical lifecycle"
+  - freshness(_processed_at) < 5m:
+      name: "Streaming ingestion freshness SLA within 300 seconds"
+
+checks for raw_customers_cdc:
+  - missing_count(customer_id) = 0:
+      name: "Customer ID must never be null"
+  - missing_count(email_hash) = 0:
+      name: "Sanitized email hash must be populated"
+  - regex(email_hash) = '^sha256:[a-f0-9]{64}$':
+      name: "Email must be GDPR pseudonymized via SHA-256"
+
+checks for dim_customers_scd2:
+  - missing_count(customer_sk) = 0:
+      name: "SCD2 surrogate key cannot be null"
+  - duplicate_count(customer_sk) = 0:
+      name: "SCD2 surrogate key must be unique across all historical versions"
+  - invalid_count(is_current) = 0:
+      valid values: [true, false]
+
+checks for fct_orders:
+  - duplicate_count(order_id) = 0:
+      name: "Deduplicated fact table must have unique order_id"
+  - missing_count(latest_lsn) = 0:
+      name: "Deduplication watermark LSN must be present"

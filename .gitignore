@@ -66,3 +66,12 @@ logs/
 *.swo
 .DS_Store
 Thumbs.db
+
+# Secrets and environment configurations
+.env
+.env.*
+.env.local
+.env.development
+.env.test
+.env.production
+!.env.example
